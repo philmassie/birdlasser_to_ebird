@@ -6,15 +6,35 @@ import pathlib
 import datetime as dt
 import re
 
-try:
-    wd = pathlib.Path(sys.argv[1])
-except:
-    wd = pathlib.Path("D:\\My Folders\\My Cloud\\Dropbox\\bird lists\\2019\\birdlasser_02\\")
+# Functions
+#============
+def get_file_list(args):
+    files = []
+    for fpath in args:
+        if os.path.isfile(fpath):
+            files.append(pathlib.Path(fpath))
+        elif os.path.isdir(fpath):
+            dir_files = os.listdir(fpath)
+            dir_files_path = []
+            for f in dir_files:
+                files.append(pathlib.Path(fpath, f))
 
-print(wd)
+            files = files + dir_files_path
+    return(files)
 
-files = os.listdir(wd)
-print(files)
+# output directory - most parental
+def get_output_path(files):
+    path_lengths = []
+    for f in files:
+        path_lengths.append(len(str(f.parent).split("\\")))
+
+    path_len_min = min(path_lengths)
+
+    for i in range(len(path_lengths)):
+        if path_lengths[i] == path_len_min:
+            out_dir = files[i].parent.joinpath("ebird")
+    
+    return(out_dir)
 
 # fname =  files[0]
 # lasser = pd.read_csv(str(wd) + "\\" + files[0])
@@ -88,24 +108,30 @@ def ebird_maker(lasser, fname):
 
     return(ebird)
 
-f = files [0]
+# Ops
+#====
+# print(sys.argv)
+files = get_file_list(sys.argv[1:])
+
+
+f = files[0]
 ebird_full = []
 
 for f in files:
     success = False
     while success == False:
-        ebird = ebird_maker(pd.read_csv(str(wd) + "\\" + f), f)
+        ebird = ebird_maker(pd.read_csv(f), f.name)
         if str(type(ebird)) == "<class 'pandas.core.frame.DataFrame'>":
             success = True
             ebird_full = ebird_full + [ebird]
 
 ebird_pdf = pd.concat(ebird_full)
 
-input("Pausing: ")
+output_dir = get_output_path(files)
+if not os.path.exists(output_dir):
+    os.makedirs(output_dir)
+upload_file = str(output_dir.joinpath("ebird_" + str(dt.datetime.now()).replace(":", ".").replace(" ", "_") + ".csv"))
 
-
-upload_file = str(wd.parent.joinpath("ebird_" + str(dt.datetime.now()).replace(":", ".").replace(" ", "_") + ".csv"))
-
-input("Pausing: ")
 ebird_pdf.to_csv(upload_file, header=False, index=False)
 
+input("File creation complete")
