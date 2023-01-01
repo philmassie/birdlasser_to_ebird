@@ -38,7 +38,7 @@ def get_output_path(files):
 
 # fname =  files[0]
 # lasser = pd.read_csv(str(wd) + "\\" + files[0])
-
+# lasser, fname = pd.read_csv(f), f.name
 def ebird_maker(lasser, fname):
     # Date
     lasser['Date']= pd.to_datetime(lasser['Date'])
@@ -84,10 +84,10 @@ def ebird_maker(lasser, fname):
     ebird_cols = ["Common Name", "Genus", "Species", "Number", "Species Comments", "Location Name", "Latitude", "Longitude", "Date", "Start Time", "State/Province", "Country Code", "Protocol", "Number of Observers", "Duration", "All observations reported?", "Effort", "Distance Miles", "Effort", "area", "acres", "Submission Comments"]
     ebird = pd.DataFrame(columns=ebird_cols)
 
-    ebird["Common Name"] = lasser["Species primary name"]
-    ebird["Genus"] = [s.split(sep = " ")[0] for s in lasser["Species tertiary name"]]
-    ebird["Species"] = [s.split(sep = " ")[1] for s in lasser["Species tertiary name"]]
-    ebird["Number"] = 1
+    ebird["Common Name"] = lasser["Primary language"]
+    ebird["Genus"] = [s.split(sep = " ")[0] for s in lasser["Tertiary language"]]
+    ebird["Species"] = [s.split(sep = " ")[1] for s in lasser["Tertiary language"]]
+    ebird["Number"] = "x"
     ebird["Species Comments"] = species_comments
     ebird["Location Name"] = loc_name
     ebird["Latitude"] = lat
@@ -108,30 +108,45 @@ def ebird_maker(lasser, fname):
 
     return(ebird)
 
-# Ops
-#====
-# print(sys.argv)
-files = get_file_list(sys.argv[1:])
+def main(sys_arg):
+    print(sys_arg)
+    # File(s) or directory?
+    # test = "D:\\My Folders\\My Cloud\\OneDrive\\birdlasser"
+    # test = "D:\\My Folders\\My Cloud\\OneDrive\\birdlasser\\Export for eBird - Rondevlei Nature Reserve_4841368047588300096.csv"
+    test = sys_arg[1]
+    if pathlib.Path(test).is_dir():
+        # print("dir")
+        wd = pathlib.Path(test)
+        files = sorted([x for x in wd.iterdir() if x.is_file()])
+    else:
+        # print("files")
+        files = sys_arg[1:]
+    
+    # print(files)
 
+    # Ops
+    #====
+    f = files[0]
+    ebird_full = []
 
-f = files[0]
-ebird_full = []
+    for f in files:
+        success = False
+        while success == False:
+            ebird = ebird_maker(pd.read_csv(f), f.name)
+            if str(type(ebird)) == "<class 'pandas.core.frame.DataFrame'>":
+                success = True
+                ebird_full = ebird_full + [ebird]
 
-for f in files:
-    success = False
-    while success == False:
-        ebird = ebird_maker(pd.read_csv(f), f.name)
-        if str(type(ebird)) == "<class 'pandas.core.frame.DataFrame'>":
-            success = True
-            ebird_full = ebird_full + [ebird]
+    ebird_pdf = pd.concat(ebird_full)
 
-ebird_pdf = pd.concat(ebird_full)
+    output_dir = get_output_path(files)
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    upload_file = str(output_dir.joinpath("ebird_" + str(dt.datetime.now()).replace(":", ".").replace(" ", "_") + ".csv"))
 
-output_dir = get_output_path(files)
-if not os.path.exists(output_dir):
-    os.makedirs(output_dir)
-upload_file = str(output_dir.joinpath("ebird_" + str(dt.datetime.now()).replace(":", ".").replace(" ", "_") + ".csv"))
+    ebird_pdf.to_csv(upload_file, header=False, index=False)
 
-ebird_pdf.to_csv(upload_file, header=False, index=False)
+    input("File creation complete")
 
-input("File creation complete")
+if __name__ == "__main__":
+    main(sys.argv)
